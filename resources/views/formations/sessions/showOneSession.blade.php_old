@@ -1,0 +1,527 @@
+@extends('adminlte::page')
+
+@section('title') 
+    Vn° {{ $fsession->session_number }} | {{ ucwords($fsession->formation->title) }}
+@stop
+
+@section('content')
+
+@if ($errors->any())
+<div id="msg" class="alert alert-danger position-absolute" style="top: 0; right: 0; z-index: 2">
+    <ul>
+        @foreach($errors->all() as $error)
+        <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
+
+@if (session('info'))
+<div id="msg">
+    <div class="alert alert-info position-absolute" style="top: 0; right: 0; z-index: 2">
+        {{ session('info') }}
+    </div>
+</div>
+@endif
+
+@if (session('error'))
+<div id="msg">
+    <div class="alert alert-danger position-absolute" style="top: 0; right: 0; z-index: 2">
+        {{ session('error') }}
+    </div>
+</div>
+@endif
+@if (session('success'))
+<div id="msg">
+    <div class="alert alert-success position-absolute" style="top: 0; right: 0; z-index: 2">
+        {{ session('success') }}
+    </div>
+</div>
+@endif
+
+@if ($students->count() == 0)
+<div id="confirm-delete">
+    <div class="confirmation position-fixed d-flex justify-content-center align-items-center vh-100 vw-100" style="margin-top: -100px; margin-bottom: 50px; z-index: 4; background: rgba(0, 0, 0, 0.7);">
+        <div class="row d-flex justify-content-center d-md-block">
+            <div class="col-10 offset-md-1 col-md-6">
+                <div class="card" style="margin-top: -20px">
+                    <header class="card-header bg-danger">
+                        <h2 class="text-center text-dark font-weight-bold">
+                            Voulez-vous vraiment supprimer cette vague <span class="text-light">n° {{ $fsession->session_number }}</span> en <span class="text-capitalize text-light">{{ $fsession->formation->title }} ?
+                        </h2>
+                    </header>
+                    <div class="card-body d-flex justify-content-center px-3">
+                        <form id="form-delete" action="{{ route('formation.session.delete', $fsession->id) }}" method="post">
+                            @csrf
+                            @method('DELETE')
+                            <button class="btn btn-success mr-5 font-weight-bold">OUI, JE CONFIRME</button>
+                        </form>
+                        <button id="delete-cancel" class="btn btn-primary ml-5 font-weight-bold">Annuler</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+<div class="row">
+    
+    <div class="col-12 col-md-5">
+        <div id="card1">
+            <div class="card">
+                <header class="card-header bg-warning d-flex align-items-center">
+                    <h3 class="text-capitalize text-center font-weight-bold">
+                        {{ $fsession->formation->title }} <br> Vague n° {{ $fsession->session_number }}
+                    </h3>
+                    <div class="ml-auto">
+                        <button class="btn btn-primary"  title="Editer"><i class="fa fa-edit"></i></button>
+                    </div>
+                </header>
+                <div class="card-body p-0">
+                    <table class="table table-hover">
+                        <tbody>
+                            <tr class="font-weight-bold">
+                                <td style="vertical-align: middle">Date Fin :</td>
+                                <td @if (!$fsession->date_end) class="text-danger" @endif>{{ $fsession->date_end ? date_create($fsession->date_end)->format('d/m/Y') : '????????'}}    </td>
+                            </tr>
+                            <tr class="font-weight-bold">
+                                <td>Date Début : </td>
+                                <td>{{ date_create($fsession->date_debut)->format('d/m/Y') }}</td>
+                            </tr>
+                            <tr class="font-weight-bold">
+                                <td>Frais : </td>
+                                <td>{{ number_format($fsession->fee, 0, ',', '.') }} AR</td>
+                            </tr>
+                            <tr class="font-weight-bold">
+                                <td>Le Prof : </td>
+                                <td>{{ $fsession->teacher->full_name }}</td>
+                            </tr>
+                            <tr class="font-weight-bold">
+                                <td>Description : </td>
+                                <td @if (!$fsession->description) class="text-danger" @endif>{!! $fsession->description ? nl2br(htmlSpecialChars($fsession->description)) : '????????' !!}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @if ($students->count() == 0)
+            <div class="d-flex justify-content-center">
+                <button id="delete-fsession-button" title="Supprimer cette vague de formation" class="btn btn-danger"><i class="fa fa-trash"></i></button>
+            </div>
+            @endif
+        </div>
+        
+        <form id="form-section" action="{{ route('formation.session.update', $fsession->id) }}" method="post">
+            @csrf
+            @method('PUT')
+            <div class="form-group input-group">
+                <button  class="btn btn-danger cancel-edit"><i class="fa fa-window-close"></i></button>
+                <button type="submit" class="btn btn-success form-control">UPDATE</button>
+                <button  class="btn btn-danger cancel-edit"><i class="fa fa-window-close"></i></button>
+            </div>
+            <div class="mt-3 row">
+                <div class="col-6">
+                    <div class="form-group">
+                        <label for="date_debut">Date Début</label>
+                        <input type="date" name="date_debut" id="date_debut" class="form-control" value="{{ $fsession->date_debut }}">
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-group">
+                        <label for="date_end">Date Fin</label>
+                        <input type="date" name="date_end" id="date_debut" value="{{ $fsession->date_end ?? '' }}" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="form-group input-group">
+                <input type="number" step="1000" name="fee" class="form-control" placeholder="Frais (en Ariary)" value="{{ $fsession->fee }}">
+                <button class="btn btn-info disabled">ARIARY</button>
+            </div>
+            <div id="teacher-section">
+                <div id="teacher-new-section" class="form-group">
+                    <div class="form-group input-group">
+                        <input type="text" name="teacher" class="form-control" placeholder="Nom Complet">
+                        <button id="cancel-new-teacher"  class="btn btn-danger"><i class="fa fa-window-close"></i></button>
+                    </div>
+                    <div class="form-group">
+                        <input type="email" name="email" placeholder="Email" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" name="phone" placeholder="Numéro Téléphone" class="form-control">
+                    </div>
+                </div>
+                <div id="teacher-select-section" class="form-group input-group">
+                    <select name="teacher" class="form-control">
+                        <option value="s0">Sélectionner un prof</option>
+                        @foreach($teachers as $teacher)
+                        <option value="s{{ $teacher->id }}" class="font-weight-bold" @if ($teacher->id == $fsession->teacher->id) selected @endif>
+                            {{ $teacher->full_name }}
+                        </option>
+                        @endforeach
+                    </select>
+                    <button id="new-teacher"  class="btn btn-primary">Un Nouveau</button>
+                </div>
+            </div>
+            <div class="form-goup mb-3">
+                <textarea name="description" rows="5" class="form-control" placeholder="Description">{{ $fsession->description }}</textarea>
+            </div>
+            <div class="form-group input-group">
+                <button  class="btn btn-danger cancel-edit"><i class="fa fa-window-close"></i></button>
+                <button type="submit" class="btn btn-success form-control">UPDATE</button>
+                <button class="btn btn-danger cancel-edit"><i class="fa fa-window-close"></i></button>
+            </div>
+        </form>
+
+    </div>
+
+    <div class="col-12 col-md-7">
+        <div id="card2" class="card">
+            <header class="card-header bg-warning d-flex"  style="border-bottom: 2px solid #CCC">
+                <h3 class="text-capitalize text-center font-weight-bold">Liste de tous les étudiants <br> <span class="text-info">({{ $students->count() }})</span></h3>
+                <div class="ml-auto d-flex align-items-center"><button class="btn btn-primary" title="Ajouter un nouvel étudiant pour cette vague"><i class="fa fa-plus"></i></button></div>
+            </header>
+            <div class="card-body p-0">
+                @foreach ($students as $student)
+                <div class="one-student font-weight-bold d-flex align-items-center" style="border-bottom: 2px solid #CCC; border-left: 0.3px solid #CCC">
+                    <div style="flex: 1" class="px-2 py-1">
+                        <img src="{{ $student->photo ? asset('storage/' .$student->photo) : "https://www.cmcaindia.org/wp-content/uploads/2015/11/default-profile-picture-gmail-2.png" }}" alt="" class="img-fluid">
+                    </div>
+                    <div style="flex: 6" class="p-2 pr-0">
+                        <div class="name text-capitalize">{{ $student->fname}} <span class="text-uppercase">{{ $student->lname }}</span></div>
+                        <div id="school_fee_infos-{{$student->id}}" class="school_fee_infos">
+                            <div class="font-weight-normal d-flex">
+                                Ecolage Payé (AR) : <span class="font-weight-bold mx-1">{{ number_format($student->school_fee_paid, 0, ',', '.') }}</span> sur <span class="font-weight-bold mx-1">{{ number_format($fsession->fee, 0, ',', '.') }}</span> 
+                                <span class="font-weight-bold text-info ml-auto d-block"> ({{ round($student->school_fee_paid / $fsession->fee * 100) }} %)</span>
+                            </div>
+                            <div class="bg-dark" style="height: 10px; width:100%">
+                                <span class="bg-info d-inline-block" style="height: 100%; max-width: 100%; width: {{ $student->school_fee_paid / $fsession->fee * 100 }}%; position: relative; top: -8px"></span>
+                            </div>
+                        </div>
+                        <div id="school_fee_form-{{$student->id}}" class="school_fee_form form-group mx-lg-5 mx-3 mb-0">
+                            <form action="{{ route('student.pay', $student->id) }}" method="post">
+                                @csrf @method('PUT')
+                                <div class="input-group input-group-sm">
+                                    <input type="number" min="0" step="1000" placeholder="Taper la Somme ici" name="school_fee_paid" class="form-control" autofocus>
+                                    <div class="input-group-append">
+                                        <button type="button" class="input-group-text font-weight-bold">AR</button>
+                                        <button type="submit" title="Payer La Somme" class="btn btn-primary"><i class="fas fa-money-bill-wave"></i></button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div style="flex: 1" class="d-flex justify-content-center">
+                        <div id="pay_fee_button-{{$student->id}}" onclick="afterPayFeeButtonClicked(this)" class="pay_fee_button">
+                            <button type="button" class="btn btn-info mx-1" title="Payer Une Somme" style="vertical-align: bottom"><i class="fas fa-money-bill-wave"></i></button>
+                        </div>
+                        <div id="pay_fee_cancel-{{$student->id}}" onclick="afterPayFeeCancelClicked(this)" class="pay_fee_cancel">
+                            <button type="button" class="btn btn-danger mx-1"><i class="fa fa-window-close"></i></button>
+                        </div>
+                        <div class="eye-icon" style="vertical-align: top; grid-row: 1 / 2">
+                            <a href="{{ route('student.showOne', $student->id) }}" class="btn btn-success mx-1"><i class="fa fa-eye"></i></a>
+                        </div>
+                    </div>      
+                </div>
+                @endforeach
+            </div>
+        </div>
+
+        <form id="form-section-student" action="{{ route('student.add', $id) }}" method="post" enctype="multipart/form-data">
+            @csrf
+            <div class="d-flex">
+                <h1 class="text-center h2 font-weight-bold mb-4 mx-auto"><i class="fa fa-user-plus"></i> Ajout Nouvel(le) Etudiant(e)</h1>
+                <div class="ml-auto">
+                    <button class="btn btn-danger cancel-add" title="Annuler"><i class="fa fa-window-close"></i></button>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                       <label class="placeicon">&#xf007; Nom :</label>
+                        <input type="text" name="lname"  @if ($errors->any()) value="{{ old('lname') }}" @endif placeholder="(obligatoire)" class="form-control @if ($errors->has('lname')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                    <label class="placeicon">&#xf234; Prénom :</label>
+                        <input type="text" name="fname" placeholder="(obligatoire)" class="form-control @if ($errors->has('fname')) border border-danger @endif" @if ($errors->any()) value="{{ old('fname') }}" @endif autofocus>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                        <label class="placeicon">&#xf228; Sexe</label>
+                        <select name="sex" class="form-control @if ($errors->has('sex')) border border-danger @endif">
+                            <option>Sélectionner ici : </option>
+                            <option value="man" @if ($errors->any()) @if (old('sex') == 'man') selected @endif @endif class="font-weight-bold">Homme</option>
+                            <option value="woman" @if ($errors->any()) @if (old('sex') == 'woman') selected @endif @endif class="font-weight-bold">Femme</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                    <label class="placeicon">&#xf073; Date de Naissance :</label>
+                        <input type="date" name="birth_date"  @if ($errors->any()) value="{{ old('birth_date') }}" @endif id="birth_date" class="form-control @if ($errors->has('birth_date')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                    <label class="placeicon">&#xf041; Adresse</label>
+                        <input type="text" name="address"  @if ($errors->any()) value="{{ old('address') }}" @endif placeholder="(facultatif)" class="form-control @if ($errors->has('address')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                    <label class="placeicon">&#xf19d; Niveau d'Etude</label>
+                        <input type="text" name="study_level" @if ($errors->any()) value="{{ old('study_level') }}" @endif placeholder="(facultatif)" class="form-control @if ($errors->has('study_level')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                    <label class="placeicon">&#xf2bb; N° C.I.N</label>
+                        <input type="text" name="cin"  @if ($errors->any()) value="{{ old('cin') }}" @endif placeholder="(ex: 137.920.392.902) (facultatif)" class="form-control @if ($errors->has('cin')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                    <label class="placeicon">&#xf108; Travail Actuel</label>
+                        <input type="text" name="actual_job"  @if ($errors->any()) value="{{ old('actual_job') }}" @endif placeholder="(facultatif)" class="form-control @if ($errors->has('actual_job')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                    <label class="placeicon">&#xf225; Situation Familiale :</label>
+                        <select name="family_situation" class="form-control @if ($errors->has('family_situation')) border border-danger @endif">
+                            <option>Sélectionner ici : </option>
+                            <option value="single" @if ($errors->any()) @if (old('family_situation') == 'single') selected @endif @endif class="font-weight-bold">Célibataire</option>
+                            <option value="married" @if ($errors->any()) @if (old('family_situation') == 'married') selected @endif @endif class="font-weight-bold">Marié(e)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                        <label class="placeicon">&#xf1ae; &#xf1ae; Nombre d'Enfants</label>
+                        <input type="number" name="children_number"  @if ($errors->any()) value="{{ old('children_number') }}" @endif min="1" placeholder="(facultatif)" class="form-control @if ($errors->has('childer_number')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                    <label class="placeicon">&#xf0e0; Email :</label>
+                        <input type="email" name="email"  @if ($errors->any()) value="{{ old('email') }}" @endif placeholder="a@b.c (facultatif)" class="form-control @if ($errors->has('email')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                    <label class="placeicon">&#xf095; N° Téléphone :</label>
+                        <input type="text" name="phone"  @if ($errors->any()) value="{{ old('phone') }}" @endif placeholder="03x xx xxx xx (facultatif)" class="form-control @if ($errors->has('phone')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                        <label for="machine_number" class="placeicon">&#xf109; Numéro machine <small class="text-info">(facultatif)</small></label>
+                        <input type="number" @if ($errors->any()) value="{{ old('machine_number') }}" @endif placeholder="Ne remplissez pas si l'édutiant utilise la sienne (facultatif)" min="0" class="form-control @if ($errors->has('machine_number')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                        <label for="school_fee_paid" class="placeicon">&#xf155; Somme à Payer en AR <small class="text-info">(facultatif)</small></label>
+                        <input type="number" @if ($errors->any()) value="{{ old('school_fee_paid') }}" @endif min="0" step="1000" name="school_fee_paid" id="school_fee_paid" class="form-control @if ($errors->has('school_fee_paid')) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                        <label for="photo">Photo <small class="text-info">(facultatif)</small></label>
+                        <input type="file" name="photo" @if ($errors->any()) value="{{ old('photo') }}" @endif  @if ($errors->any()) border border-danger @endif">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success form-control">AJOUTER</button>
+                    </div>
+                </div>
+            </div>  
+        </form>
+
+    </div>
+</div>
+<style type="text/css">
+.form-control {
+    margin-top: -20px;
+}
+label:not(.form-check-label):not(.custom-file-label) {
+    font-weight: 500;
+}
+.col-md-7 {
+    background: white;
+}
+label {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    background: white;
+    margin-left: 14px;
+    font-weight: normal;
+}
+[type="submit"]:not(:disabled) {
+    cursor: pointer;
+    margin-top: 19px;
+}
+.placeicon{
+  font-family: fontawesome;
+}
+
+
+</style> 
+@stop
+
+@section('js')
+    <script>
+    const confirmDelete = $('#confirm-delete');
+    const deleteFsessionButton = $('#delete-fsession-button');
+    const deleteCancel = $('#delete-cancel');
+    confirmDelete.toggle();
+    $(document).ready( () => {
+        deleteFsessionButton.click( () => {
+            confirmDelete.toggle('slow');
+        });
+        deleteCancel.click( () => {
+            confirmDelete.toggle('slow');
+        });
+    });
+
+    // $('.school_fee_form').toggle();
+    // $('.pay_fee_cancel').toggle();
+    const schoolFeeForms = $('[id|=school_fee_form]');
+    const payFeeCancel = $('[id|=pay_fee_cancel]');
+    const payFeeButtons = $('[id|=pay_fee_button]');
+    schoolFeeForms.toggle();
+    payFeeCancel.toggle();
+
+    function afterPayFeeButtonClicked(element) {
+        fullID = element.getAttribute('id');
+        id = fullID.replace('pay_fee_button-', '');
+        $(`#pay_fee_button-${id}`).toggle('slow');
+        $(`#pay_fee_cancel-${id}`).toggle('slow');
+        $(`#school_fee_infos-${id}`).toggle('slow');
+        $(`#school_fee_form-${id}`).toggle('slow');
+    }
+    function afterPayFeeCancelClicked(element) {
+        fullID = element.getAttribute('id');
+        id = fullID.replace('pay_fee_cancel-', '');
+        $(`#pay_fee_cancel-${id}`).toggle('slow');
+        $(`#pay_fee_button-${id}`).toggle('slow');
+        $(`#school_fee_form-${id}`).toggle('slow');
+        $(`#school_fee_infos-${id}`).toggle('slow');
+    }
+    /*$(document).ready( () => {
+        /*$payFeeButtons.each( (index, element) => {
+            fullID = [];
+            id = [];
+            fullID[index] = element.getAttribute('id');
+            id[index] = fullID[index].replace('pay_fee_button-', '');
+            element.addEventListener('click', () => {
+                $(`#pay_fee_button-${id[index]}`).toggle('slow');
+                $(`#pay_fee_cancel-${id[index]}`).toggle('slow');
+                $(`#school_fee_infos-${id[index]}`).toggle('slow');
+                $(`#school_fee_form-${id[index]}`).toggle('slow');
+            });
+        });
+        payFeeCancel.each( (index, element) => {
+            fullID = [];
+            id = [];
+            fullID[index] = element.getAttribute('id');
+            id[index] = fullID[index].replace('pay_fee_cancel-', '');
+            element.addEventListener('click', () => {
+                $(`#pay_fee_cancel-${id[index]}`).toggle('slow');
+                $(`#pay_fee_button-${id[index]}`).toggle('slow');
+                $(`#school_fee_form-${id[index]}`).toggle('slow');
+                $(`#school_fee_infos-${id[index]}`).toggle('slow');
+            });
+        }); 
+        // $('.pay_fee_button').click( () => {
+        //     // $('.pay_fee_button').toggle('slow');
+        //     // $('.pay_fee_cancel').toggle('slow');
+        //     // $('.school_fee_infos').toggle('slow');
+        //     // $('.school_fee_form').toggle('slow');
+        // });
+        // $('.pay_fee_cancel').click( () => {
+        //     $(`#pay_fee_cancel-${id}`).toggle('slow');
+        //     $(`#pay_fee_button-${id}`).toggle('slow');
+        //     $(`#school_fee_form-${id}`).toggle('slow');
+        //     $(`#school_fee_infos-${id}`).toggle('slow');
+        // });
+    });*/
+
+    // Variables and constants
+    const formSection = $('#form-section');
+    const cardSection = $('#card1');
+    const editButton = $('.fa.fa-edit').parent();
+    const cancelEdit = $('.cancel-edit');
+    const teacherSelectSection = $('#teacher-select-section');
+    const teacherNewSection = $('#teacher-new-section');
+    const newTeacherButton = $('#new-teacher');
+    const cancelNewTeacherButton = $('#cancel-new-teacher');
+    const teacherParent = teacherSelectSection.parent();
+
+    const card2 = $('#card2');
+    const formSectionStudent = $('#form-section-student');
+    const plusButton = $('.fa.fa-plus').parent();
+    const cancelAdd = $('button.cancel-add');
+
+    const validationErrors = $('#msg');
+    // Hide element to be hidden by default
+    formSection.toggle();
+    teacherNewSection.toggle();
+    formSectionStudent.toggle();
+    validationErrors.hide();
+    //
+    $(document).ready( () => {
+        validationErrors.show('slow');
+        setTimeout( () => validationErrors.fadeOut(3000), 3000);
+
+        plusButton.click( () => {
+            card2.toggle('slow');
+            formSectionStudent.toggle('slow');
+        });
+        cancelAdd.click( (event) => {
+            event.preventDefault();
+            formSectionStudent.toggle('slow');
+            card2.toggle('slow');
+        })
+
+        editButton.click( (event) => {
+            event.preventDefault();
+            cardSection.toggle('slow');
+            formSection.toggle('slow');
+        });
+        cancelEdit.click( (event) => {
+            event.preventDefault();
+            formSection.toggle('slow');
+            cardSection.toggle('slow');
+        });
+
+        newTeacherButton.click( (event) => {
+            event.preventDefault();
+            teacherSelectSection.toggle('slow');
+            teacherNewSection.toggle('slow');
+            teacherNewSection.appendTo(teacherParent);
+        });
+        cancelNewTeacherButton.click( (event) => {
+            event.preventDefault();
+            teacherNewSection.toggle('slow');
+            teacherSelectSection.toggle('slow');
+            teacherSelectSection.appendTo(teacherParent);
+        });
+
+        $('button.disabled').click( (event) => event.preventDefault());
+    });
+    </script>
+@stop
+
+@section('css')
+<style>
+.one-student:hover {
+    background: rgba(0, 0, 0, 0.075);
+}
+</style>
+@stop
